@@ -71,7 +71,7 @@
 |--------|------|------------------|------------------|
 | `api-server` | Koa + TS | `prettier --check` | `tsc --noEmit` + `jest` 功能测试 ✅ |
 | `console-web` | Vue | 本地 `eslint` / `prettier` | `jest` 单元测试 ✅（@swc/jest，纯逻辑） |
-| `owner-mp` / `property-mp` | 小程序 | `prettier` / `node --check` | 暂无（纯 JS 逻辑可仿 console-web 接 jest） |
+| `owner-mp` / `property-mp` | 小程序 | `prettier` / `node --check` | `jest` 纯逻辑单测 ✅（@swc/jest；UI 层依赖微信运行时，无法无头测） |
 
 > 说明一：前端子项目需先在各自目录 `npm install`，其本地 `eslint`/`prettier` 才会被快速档调用；否则回退到 `node --check` 做语法校验。
 > 说明二：`console-web` 测试用 **@swc/jest** 转译而非 babel——因为本项目把 `@babel/core` 锁在旧版（Vue 4.5 构建依赖），让 jest 共用 babel 会逼升级、反而搞坏生产构建；swc 让测试与构建工具链彻底解耦。

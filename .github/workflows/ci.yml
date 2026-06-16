@@ -22,14 +22,21 @@ jobs:
         with:
           node-version: '18'
 
-      # Only subprojects that have a gate need their deps; owner-mp / property-mp
-      # have no tests yet and are skipped by the gate.
+      # Install deps for every subproject that has a gate (all four now do).
       - name: Install api-server deps
         working-directory: api-server
         run: npm ci
 
       - name: Install console-web deps
         working-directory: console-web
+        run: npm ci
+
+      - name: Install owner-mp deps
+        working-directory: owner-mp
+        run: npm ci
+
+      - name: Install property-mp deps
+        working-directory: property-mp
         run: npm ci
 
       - name: Run fail-fast delivery gate

@@ -4,6 +4,12 @@
   "description": "业主端小程序",
   "author": "contact@chowa.cn",
   "scripts": {
-    "lint": "prettier --write src/*.js src/* src/**/* src/**/**/* src/**/**/**/* src/**/**/**/**/*"
+    "lint": "prettier --write src/*.js src/* src/**/* src/**/**/* src/**/**/**/* src/**/**/**/**/*",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "@swc/core": "^1.15.41",
+    "@swc/jest": "^0.2.39",
+    "jest": "^27.5.1"
   }
 }
