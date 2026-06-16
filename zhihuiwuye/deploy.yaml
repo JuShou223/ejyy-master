@@ -1,0 +1,21 @@
+# 智慧物业 · 业主端 H5  部署配置
+# 注意：80 端口为现有生产系统 ejyy(业之鹰物业)，本站以子路径 /yezhu/ 共存，勿覆盖 default_server。
+server:
+  host: 47.117.247.136
+  user: root
+  auth: sshpass
+  password: hws@wlgs8888
+
+targets:
+  h5:
+    desc: 业主端H5静态站点
+    # 纯静态，无构建步骤
+    upload:
+      dir: .                       # 上传 index.html / css / js（tar 打包）
+      to: /var/www/zhihuiwuye
+      pack: tar
+    deploy:
+      remote: chown -R www-data:www-data /var/www/zhihuiwuye && nginx -t && systemctl reload nginx
+    verify:
+      - url: http://47.117.247.136/yezhu/
+        expect: 200
