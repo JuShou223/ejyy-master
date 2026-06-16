@@ -170,58 +170,68 @@ def makefile_has_test(root: Path) -> bool:
         return False
 
 
+def tsc_check(root: Path):
+    """Type-check gate for a TS project; (label, rc, out) or None."""
+    if not (root / "tsconfig.json").exists():
+        return None
+    tsc = local_bin(root, "tsc")
+    if tsc:
+        return ("tsc --noEmit",) + run([str(tsc), "--noEmit"], root)
+    if have("npx"):
+        rc, out = run(["npx", "--no-install", "tsc", "--noEmit"], root)
+        if rc != 127:  # 127 => npx couldn't find tsc; nothing to run
+            return ("tsc --noEmit", rc, out)
+    return None
+
+
 def full_check(root: Path):
-    """Return (label, rc, output) for ONE subproject's suite, or None."""
-    if makefile_has_test(root) and have("make"):
-        return ("make test",) + run(["make", "test"], root)
+    """Return a LIST of (label, rc, output) — a subproject can have several
+    gates (e.g. type-check AND unit tests), and we want all of them, not the
+    first match. Empty list means nothing recognizable to gate on."""
+    results = []
 
     if has_npm_test(root):
         pm = package_manager(root)
-        return ("{0} test".format(pm),) + run([pm, "test"], root)
+        results.append(("{0} test".format(pm),) + run([pm, "test"], root))
+
+    tsc = tsc_check(root)  # static gate runs alongside the test gate
+    if tsc is not None:
+        results.append(tsc)
 
     py_markers = ["pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini"]
     if (any((root / m).exists() for m in py_markers) or (root / "tests").is_dir()) \
             and have("pytest"):
-        return ("pytest",) + run(["pytest", "-q"], root)
+        results.append(("pytest",) + run(["pytest", "-q"], root))
 
     if (root / "go.mod").exists() and have("go"):
-        return ("go test",) + run(["go", "test", "./..."], root)
+        results.append(("go test",) + run(["go", "test", "./..."], root))
 
     if (root / "Cargo.toml").exists() and have("cargo"):
-        return ("cargo test",) + run(["cargo", "test"], root)
+        results.append(("cargo test",) + run(["cargo", "test"], root))
 
-    # No unit tests, but a typed project? Type-checking is the next-best gate.
-    if (root / "tsconfig.json").exists():
-        tsc = local_bin(root, "tsc")
-        if tsc:
-            return ("tsc --noEmit",) + run([str(tsc), "--noEmit"], root)
-        if have("npx"):
-            rc, out = run(["npx", "--no-install", "tsc", "--noEmit"], root)
-            if rc != 127:  # 127 => npx couldn't find tsc; nothing to run
-                return ("tsc --noEmit", rc, out)
+    # Makefile is a fallback only when nothing language-specific matched.
+    if not results and makefile_has_test(root) and have("make"):
+        results.append(("make test",) + run(["make", "test"], root))
 
-    return None
+    return results
 
 
 def run_full_gate(repo_root: Path) -> int:
-    """Run every subproject's gate; aggregate failures into one report."""
+    """Run every subproject's gates; aggregate failures into one report."""
     failures = []
     ran = []
     for proj in discover_projects(repo_root):
-        result = full_check(proj)
-        if result is None:
-            continue
-        label, rc, out = result
         name = proj.name if proj != repo_root else "(root)"
-        ran.append("{0}: {1}".format(name, label))
-        if rc != 0:
-            failures.append((name, label, out[-OUTPUT_TAIL:]))
+        for label, rc, out in full_check(proj):
+            ran.append("{0}: {1}".format(name, label))
+            if rc != 0:
+                failures.append((name, label, out[-OUTPUT_TAIL:]))
 
     if not ran:
         return 0  # nothing recognizable to gate on -> don't block
     if failures:
-        sys.stderr.write("[X] delivery gate FAILED in {0} subproject(s):\n\n".format(
-            len(failures)))
+        sys.stderr.write("[X] delivery gate FAILED ({0} of {1} checks):\n\n".format(
+            len(failures), len(ran)))
         for name, label, out in failures:
             sys.stderr.write("--- {0} ({1}) ---\n{2}\n\n".format(name, label, out))
         sys.stderr.write("Fix the above before continuing, then re-check.\n")

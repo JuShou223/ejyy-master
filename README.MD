@@ -67,7 +67,7 @@
 
 | 子项目 | 类型 | 快速档（逐文件） | 完整档（交付门） |
 |--------|------|------------------|------------------|
-| `api-server` | Koa + TS | `prettier --check` | `tsc --noEmit` 类型检查 ✅ |
+| `api-server` | Koa + TS | `prettier --check` | `tsc --noEmit` 类型检查 + `jest` 功能测试 ✅ |
 | `console-web` | Vue | 本地 `eslint` / `prettier` | `npm test`（暂未配置） |
 | `owner-mp` / `property-mp` | 小程序 | `prettier` / `node --check` | 暂无 |
 
