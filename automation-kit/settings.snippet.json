@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PROJECT_DIR}/.claude/hooks/run-checks.py --mode fast",
+            "timeout": 120000,
+            "statusMessage": "running fast checks"
+          }
+        ]
+      }
+    ]
+  }
+}
