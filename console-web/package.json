@@ -9,7 +9,8 @@
     "dev": "vue-cli-service serve",
     "dist": "npm run iconfont && vue-cli-service build",
     "lint": "vue-cli-service lint",
-    "iconfont": "cwfont compile"
+    "iconfont": "cwfont compile",
+    "test": "jest"
   },
   "keywords": [
     "vue",
@@ -39,6 +40,8 @@
     "wangeditor": "^4.7.6"
   },
   "devDependencies": {
+    "@swc/core": "^1.15.41",
+    "@swc/jest": "^0.2.39",
     "@vue/cli-plugin-babel": "~4.5.0",
     "@vue/cli-plugin-eslint": "~4.5.0",
     "@vue/cli-plugin-router": "~4.5.0",
@@ -52,6 +55,7 @@
     "eslint": "^6.7.2",
     "eslint-plugin-prettier": "^3.1.3",
     "eslint-plugin-vue": "^6.2.2",
+    "jest": "^27.5.1",
     "less": "^2.7.3",
     "less-loader": "^4.0.6",
     "prettier": "^1.19.1",

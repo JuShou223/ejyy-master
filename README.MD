@@ -65,13 +65,17 @@
 
 **各子项目的自动探测关卡：**
 
+完整门是 **fail-fast 分阶段**的：先静态（tsc）→ 再单元/组件测试 → 最后 E2E（仅 `--with-e2e`）。前一阶段有红就短路，不浪费时间跑后面更慢的检查。
+
 | 子项目 | 类型 | 快速档（逐文件） | 完整档（交付门） |
 |--------|------|------------------|------------------|
-| `api-server` | Koa + TS | `prettier --check` | `tsc --noEmit` 类型检查 + `jest` 功能测试 ✅ |
-| `console-web` | Vue | 本地 `eslint` / `prettier` | `npm test`（暂未配置） |
-| `owner-mp` / `property-mp` | 小程序 | `prettier` / `node --check` | 暂无 |
+| `api-server` | Koa + TS | `prettier --check` | `tsc --noEmit` + `jest` 功能测试 ✅ |
+| `console-web` | Vue | 本地 `eslint` / `prettier` | `jest` 单元测试 ✅（@swc/jest，纯逻辑） |
+| `owner-mp` / `property-mp` | 小程序 | `prettier` / `node --check` | 暂无（纯 JS 逻辑可仿 console-web 接 jest） |
 
-> 说明：前端子项目需先在各自目录 `npm install`，其本地 `eslint`/`prettier` 才会被快速档调用；否则回退到 `node --check` 做语法校验。检查器遇到无法识别的技术栈会安全跳过（exit 0），绝不瞎阻塞。完整用法见 [`automation-kit/README.md`](automation-kit/README.md)。
+> 说明一：前端子项目需先在各自目录 `npm install`，其本地 `eslint`/`prettier` 才会被快速档调用；否则回退到 `node --check` 做语法校验。
+> 说明二：`console-web` 测试用 **@swc/jest** 转译而非 babel——因为本项目把 `@babel/core` 锁在旧版（Vue 4.5 构建依赖），让 jest 共用 babel 会逼升级、反而搞坏生产构建；swc 让测试与构建工具链彻底解耦。
+> 说明三：检查器遇到无法识别的技术栈会安全跳过（exit 0），绝不瞎阻塞。完整用法见 [`automation-kit/README.md`](automation-kit/README.md)。
 
 ## License
 

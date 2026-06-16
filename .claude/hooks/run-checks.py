@@ -184,19 +184,28 @@ def tsc_check(root: Path):
     return None
 
 
-def full_check(root: Path):
-    """Return a LIST of (label, rc, output) — a subproject can have several
-    gates (e.g. type-check AND unit tests), and we want all of them, not the
-    first match. Empty list means nothing recognizable to gate on."""
-    results = []
+def has_npm_script(root: Path, name: str) -> bool:
+    pkg = root / "package.json"
+    if not pkg.exists():
+        return False
+    try:
+        return bool(json.loads(pkg.read_text()).get("scripts", {}).get(name))
+    except Exception:
+        return False
 
+
+def static_checks(root: Path):
+    """Stage 0: fast static/type analysis for ONE subproject."""
+    tsc = tsc_check(root)
+    return [tsc] if tsc is not None else []
+
+
+def test_suites(root: Path):
+    """Stage 1: unit/component test suites for ONE subproject."""
+    results = []
     if has_npm_test(root):
         pm = package_manager(root)
         results.append(("{0} test".format(pm),) + run([pm, "test"], root))
-
-    tsc = tsc_check(root)  # static gate runs alongside the test gate
-    if tsc is not None:
-        results.append(tsc)
 
     py_markers = ["pytest.ini", "pyproject.toml", "setup.cfg", "tox.ini"]
     if (any((root / m).exists() for m in py_markers) or (root / "tests").is_dir()) \
@@ -209,34 +218,53 @@ def full_check(root: Path):
     if (root / "Cargo.toml").exists() and have("cargo"):
         results.append(("cargo test",) + run(["cargo", "test"], root))
 
-    # Makefile is a fallback only when nothing language-specific matched.
     if not results and makefile_has_test(root) and have("make"):
         results.append(("make test",) + run(["make", "test"], root))
 
     return results
 
 
-def run_full_gate(repo_root: Path) -> int:
-    """Run every subproject's gates; aggregate failures into one report."""
-    failures = []
-    ran = []
-    for proj in discover_projects(repo_root):
+def e2e_suites(root: Path):
+    """Stage 2: slow end-to-end suites; opt-in via --with-e2e only."""
+    if has_npm_script(root, "test:e2e"):
+        pm = package_manager(root)
+        return [("{0} run test:e2e".format(pm),) + run([pm, "run", "test:e2e"], root)]
+    return []
+
+
+def _run_stage(projects, repo_root: Path, fn):
+    """Run one stage across all subprojects; return (failures, ran-labels)."""
+    failures, ran = [], []
+    for proj in projects:
         name = proj.name if proj != repo_root else "(root)"
-        for label, rc, out in full_check(proj):
+        for label, rc, out in fn(proj):
             ran.append("{0}: {1}".format(name, label))
             if rc != 0:
                 failures.append((name, label, out[-OUTPUT_TAIL:]))
+    return failures, ran
 
-    if not ran:
-        return 0  # nothing recognizable to gate on -> don't block
-    if failures:
-        sys.stderr.write("[X] delivery gate FAILED ({0} of {1} checks):\n\n".format(
-            len(failures), len(ran)))
-        for name, label, out in failures:
-            sys.stderr.write("--- {0} ({1}) ---\n{2}\n\n".format(name, label, out))
-        sys.stderr.write("Fix the above before continuing, then re-check.\n")
-        return 2
-    return 0
+
+def run_full_gate(repo_root: Path, with_e2e: bool = False) -> int:
+    """Fail-fast staged gate: static -> tests -> (optional) E2E. A red stage
+    short-circuits, so we never pay for slow checks while a cheap one is red."""
+    projects = discover_projects(repo_root)
+
+    stages = [("static/type-check", static_checks),
+              ("unit/component tests", test_suites)]
+    if with_e2e:
+        stages.append(("E2E", e2e_suites))
+
+    for stage_name, fn in stages:
+        failures, ran = _run_stage(projects, repo_root, fn)
+        if failures:
+            sys.stderr.write("[X] delivery gate FAILED at {0} ({1} of {2} checks):\n\n".format(
+                stage_name, len(failures), len(ran)))
+            for name, label, out in failures:
+                sys.stderr.write("--- {0} ({1}) ---\n{2}\n\n".format(name, label, out))
+            sys.stderr.write("Fix the above before continuing, then re-check.\n")
+            return 2
+
+    return 0  # all stages green (or nothing recognizable to run)
 
 
 # --------------------------------------------------------------------- main ---
@@ -256,7 +284,7 @@ def main() -> None:
         data = read_hook_input()
         if data.get("stop_hook_active"):
             sys.exit(0)
-        sys.exit(run_full_gate(repo_root))
+        sys.exit(run_full_gate(repo_root, with_e2e="--with-e2e" in sys.argv))
 
     # fast mode (default): check just the edited file, in its own subproject
     data = read_hook_input()
