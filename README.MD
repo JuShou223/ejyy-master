@@ -40,6 +40,37 @@
 
 [查看文档](https://gj4h0z80f2.feishu.cn/docx/H62ndDuUhodT7dx0QIJc1sMFnfc)
 
+## 自动化开发流水线（automation-kit）
+
+仓库内置了一套可移植的 Claude Code 自动化骨架 [`automation-kit/`](automation-kit/)，把「计划 → 写码 → 测试 → 交付」串成可自动运行的流水线。它会自动探测各子项目的技术栈，无需逐项目手写测试命令。
+
+**三个组成部分：**
+
+| 组件 | 作用 | 触发时机 |
+|------|------|----------|
+| 快速检查 hook | 每次 `Edit`/`Write` 后只检查改动的那个文件，红了即时反馈给 Claude 自我修正 | `PostToolUse`，自动 |
+| 计划/规格模板 | 写码前先产出明确规格 + 人工把关的勾选式任务清单 | 计划模式下，由你填写 |
+| `/auto-deliver` 循环 | 跑全量检查；绿则按逻辑提交并开 PR，红则汇报失败 | `/loop 10m /auto-deliver` |
+
+**安装：**
+
+```bash
+# 全局：让 /auto-deliver 与检查器对所有项目可用
+./automation-kit/install.sh global
+
+# 单个子项目：接好快速 hook + 模板 + settings（幂等，可重复运行）
+./automation-kit/install.sh project api-server      # 或 console-web / owner-mp / property-mp
+```
+
+**各子项目的自动探测关卡：**
+
+| 子项目 | 快速档（逐文件） | 完整档（交付门） |
+|--------|------------------|------------------|
+| `api-server`（Koa + TS） | `prettier --check` | `tsc --noEmit` 类型检查 |
+| `console-web` / `owner-mp` / `property-mp`（Vue） | 本地 `eslint`（若有）/ `prettier` | `npm test`（若配置） |
+
+> 注：检查器遇到无法识别的技术栈会安全跳过（exit 0），绝不瞎阻塞。完整用法见 [`automation-kit/README.md`](automation-kit/README.md)。
+
 ## License
 
 ![AGPL](resources/images/agplv3.png)
