@@ -44,6 +44,15 @@ Both layers, per your setup (`两者都要`):
 
 `install project` is **idempotent** — re-running won't duplicate the hook.
 
+## Monorepo mode
+
+Install once at the **repo root** and a single Claude session covers every
+subproject. The fast hook walks up from each edited file to its nearest
+`package.json`/`tsconfig.json`/`go.mod`/`Cargo.toml` and runs *that* subproject's
+tools (its own `node_modules/.bin/eslint`, etc.). The full gate iterates over all
+discovered subprojects and aggregates failures into one report. No per-subproject
+config needed — front-end and back-end are checked from the same root session.
+
 ## Auto-detected stacks
 
 | Marker | Fast (per file) | Full (suite) |
