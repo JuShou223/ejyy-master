@@ -1,0 +1,36 @@
+name: CI
+
+# Runs the SAME fail-fast delivery gate as the local Stop hook, but on a clean
+# Linux runner — so every push/PR is independently verified server-side.
+# (Build is intentionally NOT run here: tests don't need it, and webpack 4 needs
+# the openssl-legacy-provider workaround on modern Node.)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gate:
+    name: Delivery gate (static + unit tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      # Only subprojects that have a gate need their deps; owner-mp / property-mp
+      # have no tests yet and are skipped by the gate.
+      - name: Install api-server deps
+        working-directory: api-server
+        run: npm ci
+
+      - name: Install console-web deps
+        working-directory: console-web
+        run: npm ci
+
+      - name: Run fail-fast delivery gate
+        run: python3 .claude/hooks/run-checks.py --mode full

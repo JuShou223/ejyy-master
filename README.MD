@@ -77,6 +77,8 @@
 > 说明二：`console-web` 测试用 **@swc/jest** 转译而非 babel——因为本项目把 `@babel/core` 锁在旧版（Vue 4.5 构建依赖），让 jest 共用 babel 会逼升级、反而搞坏生产构建；swc 让测试与构建工具链彻底解耦。
 > 说明三：检查器遇到无法识别的技术栈会安全跳过（exit 0），绝不瞎阻塞。完整用法见 [`automation-kit/README.md`](automation-kit/README.md)。
 
+**CI（Linux 服务器端验证）**：[`.github/workflows/ci.yml`](.github/workflows/ci.yml) 在每次 push/PR 时于 Linux runner 上跑**同一个** `run-checks.py --mode full` 门——本地 Stop hook 与云端 CI 共用一套关卡，形成"内循环 + 外循环"双保险。
+
 ## License
 
 ![AGPL](resources/images/agplv3.png)
