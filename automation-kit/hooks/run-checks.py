@@ -250,6 +250,12 @@ def main() -> None:
     repo_root = project_root()
 
     if mode == "full":
+        # When wired as a Stop hook, stdin carries stop_hook_active. If we're
+        # already in a stop-hook-driven continuation, don't re-block — otherwise
+        # a persistently-red gate would loop Claude forever.
+        data = read_hook_input()
+        if data.get("stop_hook_active"):
+            sys.exit(0)
         sys.exit(run_full_gate(repo_root))
 
     # fast mode (default): check just the edited file, in its own subproject
